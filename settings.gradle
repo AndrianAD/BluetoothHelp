@@ -1,0 +1,2 @@
+include ':app', ':bluetoohelplb'
+rootProject.name='BluetoothHelp'
