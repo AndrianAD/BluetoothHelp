@@ -9,7 +9,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
-import android.os.CountDownTimer
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
 
@@ -18,18 +17,18 @@ const val REQUEST_DISCOVER_BT = 2588
 const val PERMISSION_REQUEST_ACCESS_FINE_LOCATION = 123
 
 class BluetoothHelp(var activity: Activity) {
-
+    var mBlueAdapter: BluetoothAdapter=BluetoothAdapter.getDefaultAdapter()
     init {
         checkPermission()
     }
 
     private var bluetoothDevices: ArrayList<BluetoothDevice> = arrayListOf()
-    var mBlueAdapter: BluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+
     var listOfExtraDevices: ArrayList<DeviceInfo> = arrayListOf()
     private var onClickEvent: OnClickEvent? = null
 
 
-    private val receiver = object : BroadcastReceiver() {
+    val receiver = object : BroadcastReceiver() {
 
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action!!) {
@@ -37,7 +36,7 @@ class BluetoothHelp(var activity: Activity) {
                     val device: BluetoothDevice =
                         intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
                     if (device.name != null) {
-                        onClickEvent!!.callBack(DeviceInfo(device.name, device.address))
+                        onClickEvent!!.callBack(device)
                     }
                 }
             }
@@ -66,7 +65,7 @@ class BluetoothHelp(var activity: Activity) {
 
     }
 
-    fun makeDiscoverable(ms: Int=300): Boolean {
+    fun makeDiscoverable(ms: Int = 300): Boolean {
         return if (!mBlueAdapter.isDiscovering) {
             val discoverableIntent: Intent =
                 Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE).apply {
@@ -77,16 +76,13 @@ class BluetoothHelp(var activity: Activity) {
         } else false
     }
 
-    fun getPairedDevices(): ArrayList<DeviceInfo> {
-        val listOfDevice: ArrayList<DeviceInfo> = arrayListOf()
+    fun getPairedDevices(): ArrayList<BluetoothDevice> {
+        val listOfDevice: ArrayList<BluetoothDevice> = arrayListOf()
         if (mBlueAdapter.isEnabled) {
             val pairedDevices: Set<BluetoothDevice>? = mBlueAdapter.bondedDevices
             pairedDevices?.forEach { device ->
                 listOfDevice.add(
-                    DeviceInfo(
-                        deviceName = device.name,
-                        deviceAddress = device.address
-                    )
+                    device
                 )
             }
         }
@@ -99,20 +95,12 @@ class BluetoothHelp(var activity: Activity) {
         val filter = IntentFilter(BluetoothDevice.ACTION_FOUND)
         activity.registerReceiver(receiver, filter)
         mBlueAdapter.startDiscovery()
-
-        val timer = object : CountDownTimer(20000, 1000) {
-            override fun onTick(millisUntilFinished: Long) {}
-            override fun onFinish() {
-                activity.unregisterReceiver(receiver)
-            }
-        }
-        timer.start()
     }
 
 
     private fun checkPermission() {
 
-        if (activity.checkSelfPermissionCompat(Manifest.permission.ACCESS_FINE_LOCATION) ==
+        if (activity.checkSelfPermissionCompat(Manifest.permission.ACCESS_COARSE_LOCATION) ==
             PackageManager.PERMISSION_GRANTED
         ) {
             //toast("Permission is available")
@@ -122,14 +110,14 @@ class BluetoothHelp(var activity: Activity) {
     }
 
     private fun requestPermission() {
-        if (activity.shouldShowRequestPermissionRationaleCompat(Manifest.permission.ACCESS_FINE_LOCATION)) {
+        if (activity.shouldShowRequestPermissionRationaleCompat(Manifest.permission.ACCESS_COARSE_LOCATION)) {
             activity.requestPermissionsCompat(
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION),
                 PERMISSION_REQUEST_ACCESS_FINE_LOCATION
             )
         } else {
             activity.requestPermissionsCompat(
-                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION),
                 PERMISSION_REQUEST_ACCESS_FINE_LOCATION
             )
         }
@@ -163,7 +151,7 @@ fun Activity.requestPermissionsCompat(
 
 
 interface OnClickEvent {
-    fun callBack(deviceInfo: DeviceInfo)
+    fun callBack(device: BluetoothDevice)
 }
 
 

@@ -1,32 +1,38 @@
 package com.android.bluetoothhelp
 
 import android.app.Activity
+import android.bluetooth.BluetoothDevice
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.android.bluetoohelplb.*
+import com.android.todohelper.adapter.OnRecyclerClick
 import com.android.todohelper.adapter.RecyclerAdapter
 import kotlinx.android.synthetic.main.activity_main.*
 
-class MainActivity : AppCompatActivity(), OnClickEvent {
-    var devices: ArrayList<DeviceInfo> = arrayListOf()
+
+class MainActivity : AppCompatActivity(), OnClickEvent, OnRecyclerClick {
+    var devices: ArrayList<BluetoothDevice> = arrayListOf()
     lateinit var adapter: RecyclerAdapter
     private var layoutManager: RecyclerView.LayoutManager = LinearLayoutManager(this)
+    private lateinit var bluetoothHelp: BluetoothHelp
+    lateinit var bluetoothConnectionService: BluetoothConnectionService
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        var bluetoothHelp = BluetoothHelp(this)
-
+        bluetoothHelp = BluetoothHelp(this)
+        bluetoothConnectionService = BluetoothConnectionService(bluetoothHelp)
 
         adapter = RecyclerAdapter(
-            context = this
+            context = this, onRecycleClick = this
         )
         adapter.setArrayList(ArrayList())
         recyclerView.adapter = adapter
@@ -51,6 +57,19 @@ class MainActivity : AppCompatActivity(), OnClickEvent {
             bluetoothHelp.getExtraDevices(this)
 
         }
+
+
+        send.setOnClickListener {
+            if (editText.text.toString().isNotEmpty())
+                bluetoothConnectionService.write(editText.text.toString().toByteArray())
+        }
+
+
+        bluetoothConnectionService.messageLiveData.observe(this, androidx.lifecycle.Observer {
+            Toast.makeText(this@MainActivity, "Text ->>> $it", Toast.LENGTH_SHORT).show()
+        })
+
+
     }
 
 
@@ -65,6 +84,15 @@ class MainActivity : AppCompatActivity(), OnClickEvent {
             }
         }
 
+    }
+
+    override fun onDestroy() {
+        try {
+            unregisterReceiver(bluetoothHelp.receiver)
+        } catch (e: IllegalArgumentException) {
+            e.printStackTrace()
+        }
+        super.onDestroy()
     }
 
 
@@ -91,12 +119,15 @@ class MainActivity : AppCompatActivity(), OnClickEvent {
         }
     }
 
-    override fun callBack(deviceInfo: DeviceInfo) {
-        devices.add(deviceInfo)
-        currentDevicesTV.text = devices.toString()
+    override fun callBack(device: BluetoothDevice) {
+        devices.add(device)
         toast("activity callBAck")
         adapter.setArrayList(devices)
         adapter.notifyDataSetChanged()
+    }
+
+    override fun onRecyclerClickEvent(bluetoothDevice: BluetoothDevice) {
+        bluetoothConnectionService.startClient(bluetoothDevice)
     }
 }
 

@@ -1,5 +1,6 @@
 package com.android.todohelper.adapter
 
+import android.bluetooth.BluetoothDevice
 import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
@@ -7,16 +8,14 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.cardview.widget.CardView
 import androidx.recyclerview.widget.RecyclerView
-import com.android.bluetoohelplb.DeviceInfo
 import com.android.bluetoothhelp.R
-
 import java.util.*
 
 
-class RecyclerAdapter(var context: Context) :
+class RecyclerAdapter(var context: Context, var onRecycleClick: OnRecyclerClick) :
     RecyclerView.Adapter<RecyclerAdapter.ViewHolder>() {
 
-    lateinit var devicecList: ArrayList<DeviceInfo>
+    lateinit var devicecList: ArrayList<BluetoothDevice>
 
 
     override fun onCreateViewHolder(viewGroup: ViewGroup, viewType: Int): ViewHolder {
@@ -26,17 +25,16 @@ class RecyclerAdapter(var context: Context) :
     }
 
     override fun onBindViewHolder(viewHolder: ViewHolder, position: Int) {
-        viewHolder.name?.text = devicecList[position].deviceName
+        viewHolder.name?.text = devicecList[position].name
         viewHolder.cardView!!.setOnClickListener {
-
-
+            onRecycleClick.onRecyclerClickEvent(devicecList[position])
         }
 
     }
 
     override fun getItemCount() = devicecList.size
 
-    fun setArrayList(arrayList: ArrayList<DeviceInfo>) {
+    fun setArrayList(arrayList: ArrayList<BluetoothDevice>) {
         devicecList = arrayList
     }
 
@@ -52,6 +50,13 @@ class RecyclerAdapter(var context: Context) :
 
         }
     }
+
+
+}
+
+interface OnRecyclerClick {
+
+    fun onRecyclerClickEvent(bluetoothDevice: BluetoothDevice)
 
 
 }
