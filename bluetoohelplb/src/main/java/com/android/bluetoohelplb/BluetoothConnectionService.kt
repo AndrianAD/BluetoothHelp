@@ -14,7 +14,7 @@ import java.io.OutputStream
 import java.nio.charset.Charset
 import java.util.*
 
-class BluetoothConnectionService(
+private class BluetoothConnectionService(
     var mBluetoothAdapter: BluetoothAdapter,
     private var mContext: Context
 ) {
@@ -51,11 +51,11 @@ class BluetoothConnectionService(
             // Create a new listening server socket
             try {
                 tmp = mBluetoothAdapter.listenUsingInsecureRfcommWithServiceRecord(
-                    appName,
-                    MY_UUID_INSECURE
+                    NAME,
+                    MY_UUID
                 )
 
-                Log.d(TAG, "AcceptThread: Setting up Server using: $MY_UUID_INSECURE")
+                Log.d(TAG, "AcceptThread: Setting up Server using: $MY_UUID")
             } catch (e: IOException) {
                 Log.e(TAG, "AcceptThread: IOException: " + e.message)
             }
@@ -89,19 +89,14 @@ class BluetoothConnectionService(
             Log.i(TAG, "END mAcceptThread ")
         }
 
+        // Closes the connect socket and causes the thread to finish.
         fun cancel() {
-            Log.d(TAG, "AcceptThread cancel: Canceling AcceptThread.")
             try {
-                mmServerSocket!!.close()
+                mmServerSocket?.close()
             } catch (e: IOException) {
-                Log.e(
-                    TAG,
-                    "AcceptThread cancel: Close of AcceptThread ServerSocket failed. " + e.message
-                )
+                Log.e(TAG, "Could not close the connect socket", e)
             }
-
         }
-
     }
 
     /**
@@ -110,7 +105,7 @@ class BluetoothConnectionService(
      * succeeds or fails.
      */
     private inner class ConnectThread(device: BluetoothDevice, uuid: UUID) : Thread() {
-        private var mmSocket: BluetoothSocket? = null
+        private var btSocket: BluetoothSocket? = null
 
         init {
             Log.d(TAG, "ConnectThread: started.")
@@ -119,64 +114,26 @@ class BluetoothConnectionService(
         }
 
         override fun run() {
-            var tmp: BluetoothSocket? = null
-            Log.i(TAG, "ConnectThread RUN mConnectThread ")
+            // Cancel discovery because it otherwise slows down the connection.
+            mBluetoothAdapter?.cancelDiscovery()
 
-            // Get a BluetoothSocket for a connection with the
-            // given BluetoothDevice
-            try {
-                Log.d(
-                    TAG,
-                    "ConnectThread: Trying to create InsecureRfcommSocket using UUID: $MY_UUID_INSECURE"
-                )
-                tmp = mmDevice!!.createRfcommSocketToServiceRecord(deviceUUID)
-            } catch (e: IOException) {
-                Log.e(TAG, "ConnectThread: Could not create InsecureRfcommSocket " + e.message)
+            btSocket?.use { socket ->
+                // Connect to the remote device through the socket. This call blocks
+                // until it succeeds or throws an exception.
+                socket.connect()
+                // The connection attempt succeeded. Perform work associated with
+                // the connection in a separate thread.
+                // manageMyConnectedSocket(socket)
             }
-
-            mmSocket = tmp
-
-            // Always cancel discovery because it will slow down a connection
-            mBluetoothAdapter.cancelDiscovery()
-
-            // Make a connection to the BluetoothSocket
-
-            try {
-                // This is a blocking call and will only return on a
-                // successful connection or an exception
-                mmSocket?.connect()
-
-                Log.d(TAG, "ConnectThread run: ConnectThread connected.")
-            } catch (e: IOException) {
-                // Close the socket
-                try {
-                    mmSocket?.close()
-                    Log.d(TAG, "ConnectThread run: Closed Socket.")
-                } catch (e1: IOException) {
-                    Log.e(
-                        TAG,
-                        "mConnectThread: run: Unable to close connection in socket " + e1.message
-                    )
-                }
-
-                Log.d(TAG, "run: ConnectThread: Could not connect to UUID: $MY_UUID_INSECURE")
-            }
-
-            //will talk about this in the 3rd video
-            mmSocket?.let { connected(it, mmDevice) }
         }
 
+        // Closes the client socket and causes the thread to finish.
         fun cancel() {
             try {
-                Log.d(TAG, "ConnectThread cancel: Closing Client Socket.")
-                mmSocket!!.close()
+                btSocket?.close()
             } catch (e: IOException) {
-                Log.e(
-                    TAG,
-                    "ConnectThread cancel: close() of mmSocket in Connectthread failed. " + e.message
-                )
+                Log.e(TAG, "Could not close the client socket", e)
             }
-
         }
     }
 
@@ -318,9 +275,9 @@ class BluetoothConnectionService(
     }
 
     companion object {
-        val TAG = "BluetoothConnectionServ"
-        val appName = "Bluetooth_Test"
-        val MY_UUID_INSECURE = UUID.fromString("7744a5ac-b38a-11e9-a2a3-2a2ae2dbcce4")
+        const val TAG = "BluetoothConnectionServ"
+        const val NAME = "BluetoothHelp"
+        val MY_UUID = UUID.fromString(UUID.randomUUID().toString())
     }
 
 }
