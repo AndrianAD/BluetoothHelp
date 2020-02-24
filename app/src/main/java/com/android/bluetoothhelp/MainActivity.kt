@@ -7,7 +7,6 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -17,19 +16,18 @@ import com.android.todohelper.adapter.RecyclerAdapter
 import kotlinx.android.synthetic.main.activity_main.*
 
 
-class MainActivity : AppCompatActivity(), OnClickEvent, OnRecyclerClick {
+class MainActivity : AppCompatActivity(), BluetoothEvents, OnRecyclerClick {
     var devices: ArrayList<BluetoothDevice> = arrayListOf()
     lateinit var adapter: RecyclerAdapter
     private var layoutManager: RecyclerView.LayoutManager = LinearLayoutManager(this)
     private lateinit var bluetoothHelp: BluetoothHelp
-    lateinit var bluetoothConnectionService: BluetoothConnectionService
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        bluetoothHelp = BluetoothHelp(this)
-        bluetoothConnectionService = BluetoothConnectionService(bluetoothHelp)
+
 
         adapter = RecyclerAdapter(
             context = this, onRecycleClick = this
@@ -54,22 +52,20 @@ class MainActivity : AppCompatActivity(), OnClickEvent, OnRecyclerClick {
 
         scanExtraDevices.setOnClickListener {
             devices.clear()
-            bluetoothHelp.getExtraDevices(this)
+            bluetoothHelp.getExtraDevices()
 
         }
-
 
         send.setOnClickListener {
             if (editText.text.toString().isNotEmpty())
-                bluetoothConnectionService.write(editText.text.toString().toByteArray())
+                bluetoothHelp.bluetoothConnectionService.write(editText.text.toString().toByteArray())
         }
 
+    }
 
-        bluetoothConnectionService.messageLiveData.observe(this, androidx.lifecycle.Observer {
-            Toast.makeText(this@MainActivity, "Text ->>> $it", Toast.LENGTH_SHORT).show()
-        })
-
-
+    override fun onResume() {
+        bluetoothHelp = BluetoothHelp(this, this)
+        super.onResume()
     }
 
 
@@ -119,7 +115,11 @@ class MainActivity : AppCompatActivity(), OnClickEvent, OnRecyclerClick {
         }
     }
 
-    override fun callBack(device: BluetoothDevice) {
+    override fun getIncommingMessage(message: String) {
+        toast(message)
+    }
+
+    override fun callBackExtraDevice(device: BluetoothDevice) {
         devices.add(device)
         toast("activity callBAck")
         adapter.setArrayList(devices)
@@ -127,8 +127,9 @@ class MainActivity : AppCompatActivity(), OnClickEvent, OnRecyclerClick {
     }
 
     override fun onRecyclerClickEvent(bluetoothDevice: BluetoothDevice) {
-        bluetoothConnectionService.startClient(bluetoothDevice)
+        bluetoothHelp.bluetoothConnectionService.startClient(bluetoothDevice)
     }
+
 }
 
 

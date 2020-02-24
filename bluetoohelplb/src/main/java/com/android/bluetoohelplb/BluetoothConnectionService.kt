@@ -4,26 +4,24 @@ import android.app.ProgressDialog
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothServerSocket
 import android.bluetooth.BluetoothSocket
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
-import androidx.lifecycle.MutableLiveData
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.nio.charset.Charset
 import java.util.*
 
+
 class BluetoothConnectionService(var bluetoothHelp: BluetoothHelp) {
 
     private var mInsecureAcceptThread: AcceptThread? = null
-
     private var mConnectThread: ConnectThread? = null
     private var mmDevice: BluetoothDevice? = null
     private var deviceUUID: UUID? = null
     internal var mProgressDialog: ProgressDialog? = null
-
     private var mConnectedThread: ConnectedThread? = null
-
-    var messageLiveData = MutableLiveData<String>()
 
     init {
         start()
@@ -184,14 +182,15 @@ class BluetoothConnectionService(var bluetoothHelp: BluetoothHelp) {
         Log.d(TAG, "start")
 
         // Cancel any thread attempting to make a connection
-        if (mConnectThread != null) {
-            mConnectThread!!.cancel()
-            mConnectThread = null
-        }
+//        if (mConnectThread != null) {
+//            mConnectThread!!.cancel()
+//            mConnectThread = null
+//        }
         if (mInsecureAcceptThread == null) {
             mInsecureAcceptThread = AcceptThread()
             mInsecureAcceptThread!!.start()
         }
+
     }
 
     /**
@@ -205,7 +204,12 @@ class BluetoothConnectionService(var bluetoothHelp: BluetoothHelp) {
 
         //initprogress dialog
         mProgressDialog =
-            ProgressDialog.show(bluetoothHelp.activity, "Connecting Bluetooth", "Please Wait...", true)
+            ProgressDialog.show(
+                bluetoothHelp.activity,
+                "Connecting Bluetooth",
+                "Please Wait...",
+                true
+            )
 
         mConnectThread = ConnectThread(device, MY_UUID_INSECURE)
         mConnectThread!!.start()
@@ -245,9 +249,7 @@ class BluetoothConnectionService(var bluetoothHelp: BluetoothHelp) {
 
         override fun run() {
             val buffer = ByteArray(1024)  // buffer store for the stream
-
             var bytes: Int // bytes returned from read()
-
             // Keep listening to the InputStream until an exception occurs
             while (true) {
                 // Read from the InputStream
@@ -255,7 +257,15 @@ class BluetoothConnectionService(var bluetoothHelp: BluetoothHelp) {
                     bytes = mmInStream!!.read(buffer)
                     val incomingMessage = String(buffer, 0, bytes)
 
-                    messageLiveData.postValue(incomingMessage)
+
+
+                    Handler(Looper.getMainLooper()).post {
+                        bluetoothHelp.bluetoothEvents.getIncommingMessage(incomingMessage)
+
+                    }
+
+
+
                     Log.d(TAG, "ConnectedThread InputStream---->>>>>>>>: $incomingMessage")
                 } catch (e: IOException) {
                     Log.e(TAG, "ConnectedThread write: Error reading Input Stream. " + e.message)
@@ -302,10 +312,6 @@ class BluetoothConnectionService(var bluetoothHelp: BluetoothHelp) {
      * @see ConnectedThread.write
      */
     fun write(out: ByteArray) {
-        // Create temporary object
-        val r: ConnectedThread
-
-        // Synchronize a copy of the ConnectedThread
         Log.d(TAG, "write: Write Called.")
         //perform the write
         mConnectedThread?.write(out)
